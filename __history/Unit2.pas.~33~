@@ -1,0 +1,94 @@
+unit Unit2;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, Grids, DBGrids, DB, DBTables, ExtCtrls, DBCtrls, StdCtrls;
+
+type
+  TForm2 = class(TForm)
+    Table2: TTable;
+    DataSource2: TDataSource;
+    DBGrid2: TDBGrid;
+    DBNavigator1: TDBNavigator;
+    Edit1: TEdit;
+    procedure FormCreate(Sender: TObject);
+    procedure Edit1Change(Sender: TObject);
+    procedure Table2FilterRecord(DataSet: TDataSet; var Accept: Boolean);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form2: TForm2;
+  strFilterFamily: string;
+
+implementation
+
+{$R *.dfm}
+
+
+// Ïğîöåäóğà, âûçûâàåìàÿ ïğè Ñîçäàíèè ôîğìû Form2
+// Â íåé ìû ïğîâåğÿåì ñóùåñòâîâàíèå Table2 (òàáëèöû Phones) ñ èíôîğìàöèåé î òåëåôîííûõ êîíòàêòàõ
+// è åñëè åå íåò - òî ñîçäàåì òàáëèöó ÷åğåç ìåòîä CreateTable êîìïîíåíòà Table2
+procedure TForm2.Edit1Change(Sender: TObject);
+begin
+{  Form2.Table2.Filtered := False;  // âûêëş÷èòü ôèëüòğ
+
+//  strFilterFamily := '( ÔÈÎ = ''' + Edit1.Text + ''' )';
+//  strFilterFamily := '( ÔÈÎ LIKE ''' + '*'+Edit1.Text+'*'+ ''' )';
+  strFilterFamily := Edit1.Text;
+
+  //  Table.Filter := Field_Search + ' LIKE ' + QuotedStr('*' + Edit_Search.Text + '*');
+//  Form2.Table2.Filter := strFilterFamily;
+  Form2.Table2.Filtered := True;  // âêëş÷èòü ôèëüòğ
+}
+end;
+
+
+procedure TForm2.FormCreate(Sender: TObject);
+begin
+  // Ïîäãîòîâêà íàáîğà äàííûõ (Table2) äëÿ Form2
+  with Form2.Table2 do begin
+    Active:=false; // Òğåáóåòñÿ çàêğûòü íàáîğ äàííûõ
+    DatabaseName:='Planner';// Ïñåâäîíèì ÁÄ
+    TableName:='Phones.db';// Èìÿ òàáëèöû
+    TableType:=ttParadox; //Òèï òàáëèöû
+
+    if not Table2.Exists then begin
+      // Åñëè Table2(òàáëèöà Phones) íå ñóùåñòâóåò, ñîçäàåì åãî èñïîëüçóÿ ìåòîä CreateTable
+      with FieldDefs do begin  // Îïğåäåëÿåì ïîëÿ òàáëèöû
+        Clear;// Î÷èùàåì ñïèñîê ïîëåé
+        Add('¹ï/ï',ftAutoInc,0,true);
+        Add('ÔÈÎ',ftString,30,true);
+        Add('Îğãàíèçàöèÿ',ftString,30,false);
+        Add('Ìîá.òåëåôîí',ftString,20,false);
+        Add('Ğîá.òåëåôîí',ftString,20,false);
+        Add('Äîì.òåëåôîí',ftString,20,false);
+        Add('E-mail',ftString,40,false);
+        Add('Àäğåñ',ftString,50,false);
+      end;
+      with IndexDefs do begin // Îïğåäåëÿåì âñå èíäåêñû òàáëèöû
+        Clear; // Î÷èùàåì ñïèñîê èíäåêñîâ
+        Add('','¹ï/ï',[ixPrimary]); // Ïåğâè÷íûé èíäåêñ ïî ïîëş àâòîèíêğåìåíò
+                                    //(íîìåğ çàïèñè ïî ïîğÿäêó/èäåíòèôèêàòîğ çàïèñè)
+        Add('indFamily','ÔÈÎ',[ixCaseInsensitive]); // Èíäåêñ ïî Ôàìèëèè
+        Add('indCompany','Îğãàíèçàöèÿ',[ixCaseInsensitive]); // Èíäåêñ ïî Îğãàíèçàöèè
+      end;
+      CreateTable; // Ñîçäàåì òàáëèöó
+    end; // if not Table2.Exists
+  end;
+end;
+
+{
+procedure TForm2.Table2FilterRecord(DataSet: TDataSet; var Accept: Boolean);
+begin
+//  Accept := Pos(Edit_Search.Text, DataSet[SearchField].AsString) > 0;
+//  Accept := Pos(strFilterFamily, Table2.DataSource.DataSet['ÔÈÎ'].AsString) > 0;
+end;
+}
+
+end.

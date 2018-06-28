@@ -1,0 +1,699 @@
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, ExtCtrls, DBCtrls, Grids, DBGrids, DBTables, DB, StdCtrls,DateUtils,
+  ComCtrls, Menus, ShellApi;
+// Модуль ShellApi для работы со значком в трее (через объект класса TShellNotifyIcon)
+
+type
+  TForm1 = class(TForm)
+    DataSource1: TDataSource;
+    Button1: TButton;
+    Button2: TButton;
+    Button3: TButton;
+    Button4: TButton;
+    Table1: TTable;
+    DBGrid1: TDBGrid;
+    DBNavigator1: TDBNavigator;
+    Label1: TLabel;
+    Button6: TButton;
+    RadioGroup1: TRadioGroup;
+    CheckBox1: TCheckBox;
+    DateTimePicker1: TDateTimePicker;
+    DateTimePicker2: TDateTimePicker;
+    MainMenu1: TMainMenu;
+    N1: TMenuItem;
+    N2: TMenuItem;
+    N3: TMenuItem;
+    N4: TMenuItem;
+    N5: TMenuItem;
+    N6: TMenuItem;
+    N7: TMenuItem;
+    N8: TMenuItem;
+    N9: TMenuItem;
+    N10: TMenuItem;
+    N11: TMenuItem;
+    N12: TMenuItem;
+    N13: TMenuItem;
+    PopupMenu1: TPopupMenu;
+    N14: TMenuItem;
+    N15: TMenuItem;
+    N16: TMenuItem;
+    N17: TMenuItem;
+    procedure FormCreate(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
+    procedure Button2Click(Sender: TObject);
+    procedure Button3Click(Sender: TObject);
+    procedure Button6Click(Sender: TObject);
+    procedure Button4Click(Sender: TObject);
+    procedure RadioGroup1Click(Sender: TObject);
+    procedure DBGrid1DrawColumnCell(Sender: TObject; const Rect: TRect;
+      DataCol: Integer; Column: TColumn; State: TGridDrawState);
+    procedure DBGrid1CellClick(Column: TColumn);
+    procedure DBGrid1ColEnter(Sender: TObject);
+    procedure DBGrid1KeyPress(Sender: TObject; var Key: Char);
+    procedure CheckBox1Click(Sender: TObject);
+    procedure DateTimePicker1Change(Sender: TObject);
+    procedure DateTimePicker2Change(Sender: TObject);
+    procedure DateTimePicker1CloseUp(Sender: TObject);
+    procedure DateTimePicker2CloseUp(Sender: TObject);
+    procedure N3Click(Sender: TObject);
+    procedure N4Click(Sender: TObject);
+    procedure N5Click(Sender: TObject);
+    procedure N6Click(Sender: TObject);
+    procedure N7Click(Sender: TObject);
+    procedure N8Click(Sender: TObject);
+    procedure N11Click(Sender: TObject);
+    procedure N12Click(Sender: TObject);
+    procedure N10Click(Sender: TObject);
+    procedure N13Click(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure N14Click(Sender: TObject);
+    procedure N15Click(Sender: TObject);
+    procedure N17Click(Sender: TObject);
+    procedure DBGrid1ColExit(Sender: TObject);
+  private
+    { Private declarations }
+//    DayOfWeek: TStringField;   // объявление вычисляемого поля
+    // Процедура для отлавливания минимизации приложения (категория сообщений SYSCOMMAND),
+    // для того, чтобы заменить стандартное действие Windows  на "свёртывание в трей"
+    procedure ControlWindow(var Msg:TMessage); message WM_SYSCOMMAND;
+    // Процедура для обработки нажатий кнопок мыши на значке в трее
+    procedure IconMouse(var Msg : TMessage); message WM_USER+1;
+  public
+    // вспомогательная процедура для работы со значками (иконками) в трее
+    procedure Ic(n: integer; Icon: TIcon);
+
+  end;
+
+var
+  Form1: TForm1;
+  Present: TDateTime;       // сегодня
+  StartOfNextWeek: TDateTime;
+  d1, d2: TDateTime;
+  strFilter1: string;   // переменная для сохранения текущего условия на поле "Дата"
+  tmpDate: TDateTime;
+
+implementation
+uses
+  Unit2, Unit3, Unit4, Unit5;
+{$R *.dfm}
+
+// Нажата кнопка "На сегодня"
+procedure TForm1.Button1Click(Sender: TObject);
+begin
+  Form1.Label1.Caption := 'Задачи на сегодня';
+  strFilter1 := '(Дата = '''+FormatDateTime('dd/mm/yyyy',Now)+''')';
+  Form1.Table1.Filter := strFilter1;
+  Form1.Table1.Filtered := True;  // включить фильтры
+  // Скрываем компоненты задания диапазона дат
+   CheckBox1.Checked := False;
+   DateTimePicker1.Visible := False;
+   DateTimePicker2.Visible := False;
+  RadioGroup1.ItemIndex := 0;  // При установке условия по полю 'Дата' условие
+  // по полю "Выполнена" не задаем (устанавливаем выбор в RadioGroup в 0-й вариант - Все задачи)
+end;
+
+// Нажата кнопка "На завтра"
+procedure TForm1.Button2Click(Sender: TObject);
+begin
+  Form1.Label1.Caption := 'Задачи на завтра';
+  strFilter1 := '(Дата = '''+FormatDateTime('dd/mm/yyyy',IncDay(Now,1))+''')';
+  Form1.Table1.Filter := strFilter1;
+  Form1.Table1.Filtered := True;  // включить фильтры
+  // Скрываем компоненты задания диапазона дат
+   CheckBox1.Checked := False;
+   DateTimePicker1.Visible := False;
+   DateTimePicker2.Visible := False;
+  RadioGroup1.ItemIndex := 0;
+end;
+
+// Нажата кнопка "На этой неделе"
+procedure TForm1.Button3Click(Sender: TObject);
+begin
+  Form1.Label1.Caption := 'Задачи на этой неделе';
+  Present:= Now; // Now - функция, возвращает текущую дату и время
+  StartOfNextWeek := StartOfAWeek(YearOf(Present),WeekOf(Present)+1);
+
+  strFilter1 := '(Дата >= '''+ FormatDateTime('dd/mm/yyyy',Now)+''')' +  'and'+
+         '(Дата <  '''+ FormatDateTime('dd/mm/yyyy',StartOfNextWeek)+''')';
+  Form1.Table1.Filter := strFilter1;
+  Form1.Table1.Filtered := True;
+  // Скрываем компоненты задания диапазона дат
+   CheckBox1.Checked := False;
+   DateTimePicker1.Visible := False;
+   DateTimePicker2.Visible := False;
+  RadioGroup1.ItemIndex := 0;
+end;
+
+// Нажата кнопка "Все записи"
+procedure TForm1.Button4Click(Sender: TObject);
+begin
+  Form1.Label1.Caption := 'Все записи';
+//  Form1.Table1.Filtered := False;
+  strFilter1 := '';
+  Form1.Table1.Filter := strFilter1;
+  Form1.Table1.Filtered := True;
+  // Скрываем компоненты задания диапазона дат
+   CheckBox1.Checked := False;
+   DateTimePicker1.Visible := False;
+   DateTimePicker2.Visible := False;
+  RadioGroup1.ItemIndex := 0;
+end;
+
+// Нажата кнопка "На след. неделе"
+procedure TForm1.Button6Click(Sender: TObject);
+begin
+  Form1.Label1.Caption := 'Задачи на следующей неделе';
+  Present:= Now; // Now - функция, возвращает текущую дату и время
+  d1 := StartOfAWeek(YearOf(Present),WeekOf(Present)+1);
+  d2 := StartOfAWeek(YearOf(Present),WeekOf(Present)+2);
+  strFilter1 := '(Дата >= '''+ FormatDateTime('dd/mm/yyyy',d1)+''')' +  'and'+
+         '(Дата <  '''+ FormatDateTime('dd/mm/yyyy',d2)+''')';
+  Form1.Table1.Filter := strFilter1;
+  Form1.Table1.Filtered := True;
+  RadioGroup1.ItemIndex := 0;
+  // Скрываем компоненты задания диапазона дат
+   CheckBox1.Checked := False;
+   DateTimePicker1.Visible := False;
+   DateTimePicker2.Visible := False;
+end;
+
+// Переключатель, активирующий выбор диапазона дат для отбора задач за период
+procedure TForm1.CheckBox1Click(Sender: TObject);
+begin
+  if TCheckBox(Sender).Checked then begin  // включен CheckBox "Диапазон дат"
+    // Отображаем компоненты задания диапазона дат
+    DateTimePicker1.Date := Now;   // первоначальное значение - Текущая дата
+    DateTimePicker2.Date := DateTimePicker1.Date;   // первоначальное значение - Текущая дата
+    DateTimePicker1.Visible := True;
+    DateTimePicker2.Visible := True;
+    strFilter1 := '(Дата = '''+FormatDateTime('dd/mm/yyyy',Now)+''')';
+    Form1.Table1.Filter := strFilter1;
+    Form1.Table1.Filtered := True;  // включить фильтры
+    RadioGroup1.ItemIndex := 0;  // При установке условия по полю 'Дата' условие
+    Form1.Label1.Caption := 'Задачи за период с '+DateToStr(DateTimePicker1.Date)+' по '+DateToStr(DateTimePicker2.Date);
+  end
+  else begin
+    // Скрываем компоненты задания диапазона дат
+    DateTimePicker1.Visible := False;
+    DateTimePicker2.Visible := False;
+  end;
+end;
+
+
+// Выбор начальной даты диапазона
+// Процедура вызывается после изменения значения в DateTimePicker1
+procedure TForm1.DateTimePicker1Change(Sender: TObject);
+begin
+  if DateTimePicker1.Date <> tmpDate then begin // Механизм блокировки повторного выполнения кода
+    // При изменении даты через календарь компонент генерирует не одно, а 2 вызова этой процедуры !
+    // (это глюк или особенность работы этого компонента).
+    // Для блокировки повторного выполнения кода в этой процедуре введено условие.
+    // Запоминаем значение Даты календаря в глобальной переменной tmpDate при первом запуске
+    // и при втором запуске условие уже не выполняется.
+    tmpDate := DateTimePicker1.Date;   // запоминаем значение даты в переменной tmpDate при 1-м запуске
+    if DateTimePicker1.Date > DateTimePicker2.Date then begin
+      ShowMessage('Начальная дата не может быть больше конечной');
+      DateTimePicker1.Date := DateTimePicker2.Date;  // Начальную дату устанавливаем равной конечной
+      //    DateTimePicker1.Update;
+    end;
+
+    d1 := DateTimePicker1.Date;
+    d2 := DateTimePicker2.Date;
+    strFilter1 := '(Дата >= '''+ FormatDateTime('dd/mm/yyyy',d1)+''')' +  'and'+
+           '(Дата <=  '''+ FormatDateTime('dd/mm/yyyy',d2)+''')';
+    Form1.Table1.Filter := strFilter1;
+    Form1.Table1.Filtered := True;
+    RadioGroup1.ItemIndex := 0;
+    Form1.Label1.Caption := 'Задачи за период с '+DateToStr(d1)+' по '+DateToStr(d2)
+  end;
+end;
+
+// Запускается при сворачивании календаря после выбора начальной даты в DateTimePicker1
+procedure TForm1.DateTimePicker1CloseUp(Sender: TObject);
+begin
+  if DateTimePicker1.Date > DateTimePicker2.Date then begin
+    DateTimePicker1.Date := DateTimePicker2.Date;  // Начальную дату устанавливаем равной конечной
+  end;
+end;
+
+// Выбор конечной даты диапазона
+// Процедура вызывается после изменения значения в DateTimePicker2
+procedure TForm1.DateTimePicker2Change(Sender: TObject);
+begin
+  if DateTimePicker2.Date <> tmpDate then begin // Механизм блокировки повторного выполнения кода
+    // При изменении даты через календарь компонент генерирует не одно, а 2 вызова этой процедуры !
+    // (это глюк или особенность работы этого компонента).
+    // Для блокировки повторного выполнения кода в этой процедуре введено условие.
+    // Запоминаем значение Даты календаря в глобальной переменной tmpDate при первом запуске
+    // и при втором запуске условие уже не выполняется.
+    tmpDate := DateTimePicker2.Date;   // запоминаем значение даты в переменной tmpDate при 1-м запуске
+
+    if  DateTimePicker2.Date < DateTimePicker1.Date then begin
+      ShowMessage('Конечная дата не может быть меньше начальной');
+       DateTimePicker2.Date := DateTimePicker1.Date;
+    end;
+    d1 := DateTimePicker1.Date;
+    d2 := DateTimePicker2.Date;
+    strFilter1 := '(Дата >= '''+ FormatDateTime('dd/mm/yyyy',d1)+''')' +  'and'+
+           '(Дата <=  '''+ FormatDateTime('dd/mm/yyyy',d2)+''')';
+    Form1.Table1.Filter := strFilter1;
+    Form1.Table1.Filtered := True;
+    RadioGroup1.ItemIndex := 0;
+    Form1.Label1.Caption := 'Задачи за период с '+DateToStr(d1)+' по '+DateToStr(d2);
+  end;
+end;
+
+// Запускается при сворачивании календаря после выбора конечной даты в DateTimePicker2
+procedure TForm1.DateTimePicker2CloseUp(Sender: TObject);
+begin
+  if  DateTimePicker2.Date < DateTimePicker1.Date then begin
+    DateTimePicker2.Date := DateTimePicker1.Date;  // Конечную дату устанавливаем равной начальной
+  end;
+end;
+
+
+// Процедура вызывается при клике на ячейку DBGrid-а
+// В ней, при клике на логическом поле будем менять значение на проивоположное
+procedure TForm1.DBGrid1CellClick(Column: TColumn);
+begin
+  if (Column.Field.DataType=ftBoolean) then begin  // логическое поле
+    Column.Grid.DataSource.DataSet.Edit;  // переводим ячейку этой колонки в режим редактирования (Edit)
+                                          // чтобы можно было поменять значение на противоположное
+    Column.Field.Value := not Column.Field.AsBoolean;  // меняем значение на противоположное (True->False, False->True)
+    Column.Grid.DataSource.DataSet.Post;  // выполняем запись этого значения (метод Post)
+  end;
+end;
+
+// Процедура ColEnter вызывается когда выполняется вход в ячейку текущего поля(колонки)
+// Для логического поля отменяем ввод значений в это поле,
+// т.к. мы задаем для него CheckBox и выбор состония поля только через него
+procedure TForm1.DBGrid1ColEnter(Sender: TObject);
+begin
+  with TDBGrid(Sender) do begin
+    if (SelectedField.DataType = ftBoolean) then
+      // Options - свойство DBGrid содержащее режимы работы текущего поля
+      Options := Options - [dgEditing]    // отменить редактирование логического поля
+    else
+      Options := Options + [dgEditing]    // включить редактирование для любого другого поля
+  end;
+end;
+
+
+// Вызывается при выходе из колонки (поля)
+procedure TForm1.DBGrid1ColExit(Sender: TObject);
+var
+  day: string;
+begin
+  with TDBGrid(Sender) do begin
+    if (SelectedField.FieldName = 'Дата') then begin
+      // При выходе из поля 'Дата' перезадаем значение поля 'ДеньНедели' (ДН )
+//      day := LongDayNames[ DayOfTheWeek( SelectedField.AsDateTime ) ];
+//     day := ShortDayNames[ DayOfWeek( SelectedField.AsDateTime ) ];
+//      ShowMessage( IntToStr( DayOfWeek( SelectedField.AsDateTime )) );
+      case DayOfTheWeek( SelectedField.AsDateTime ) of
+        1: day := 'Пн';
+        2: day := 'Вт';
+        3: day := 'Ср';
+        4: day := 'Чт';
+        5: day := 'Пт';
+        6: day := 'Сб';
+        7: day := 'Вс';
+      end;
+//      ShowMessage(day);
+      Table1.FieldByName('ДеньНедели').DataSet.Edit;  // переключить выбранное поле в режим редактирования
+      Table1.FieldByName('ДеньНедели').Value := day;  // задать значение
+//      Table1.FieldByName('ДеньНедели').DataSet.Post; // записать значение
+    end;
+  end;
+end;
+
+// Процедура DrawColumnCell вызывается когда DBGrid перерисовывает ячейки.
+// Добавим в эту процедуру раскраску строк в зависимости от значения поля 'Выполнена':
+//  - если задача выполнена, то зададим цвет шрифта зеленым,
+//  - если задача не выполнена, то зададим цвет шрифта красным.
+// Также в этой процедуре для логического поля будем выводить CheckBox
+procedure TForm1.DBGrid1DrawColumnCell(Sender: TObject; const Rect: TRect;
+  DataCol: Integer; Column: TColumn; State: TGridDrawState);
+var
+   Style: Integer;  // стиль отображения CheckBox для текущей ячейки логического поля
+                    // (с галочкой или без)
+begin
+  // Раскрашиваем строку
+//  with DBGrid1 do begin
+  with TDBGrid(Sender) do begin
+    if (Table1.FieldByName('Выполненa').AsBoolean <> True) then begin // не выполненная задача
+      // Canvas.Brush.Color:=clWhite;   // фон менять не будем
+      Canvas.Font.Color:=clRed;  // выводим значения полей этой строки красным цветом
+    end else begin  // выполненная задача
+      // Canvas.Brush.Color:=clWhite;   // фон менять не будем
+      Canvas.Font.Color:=clGreen; // выводим значения полей зеленым цветом
+    end;
+    // если строка (ячейка) была выделена, оставляем стандартные "подсвеченные" цвета
+    if  gdSelected in State then begin
+      Canvas.Brush.Color:= clHighLight;
+      Canvas.Font.Color := clHighLightText;
+    end;
+    // Зарисовываем ячейку заданими параметрами
+    DefaultDrawColumnCell(Rect, DataCol, Column, State);
+  end;  // with
+
+  // Для логических полей рисуем CheckBox
+  if (Column.Field.DataType = ftBoolean) then begin  // поле типа Boolean
+    // Обрабатывается ячейка, в которую мы хотим поместить TCheckBox
+
+    TDBGrid(Sender).Canvas.FillRect(Rect);   // Сначала зарисуем стандартные значения в ячейке
+                                            // (затерем надписи True/False) текущим цветом фона
+    // Подготовим стиль CheckBox в зависимости от текущего значения поля
+    if Column.Field.Value = True then { значение поля TRUE }
+      Style := DFCS_CHECKED   // задать включенное состояние CheckBox (с галочкой)
+		else
+      Style := DFCS_BUTTONCHECK;  // задать выключенное состояние CheckBox (пустой квадрат)
+    // Вызываем функцию DrawFrameControl, которая рисует на канве в определенном прямоугольнике
+    // стандартный windows-control, тип и состояние которого определяется
+    // передаваемыми параметрами (в нашем случа CheckBox с заданными параметрами)
+    DrawFrameControl(TDBGrid(Sender).Canvas.Handle, Rect, DFC_BUTTON, Style);
+	end;
+
+end;
+
+// Процедура KeyPress вызывается когда выполняется нажатие клавиш в текущем поле
+procedure TForm1.DBGrid1KeyPress(Sender: TObject; var Key: Char);
+begin
+  with TDBGrid(Sender) do begin
+    if (SelectedField.DataType = ftBoolean) then begin  // Логическое поле
+      if (key = Chr(32)) then begin
+        SelectedField.DataSet.Edit;  // переключить выбранное поле в режим редактирования
+        SelectedField.Value := not SelectedField.AsBoolean;  // Поменять значение на противоположное
+        SelectedField.DataSet.Post; // записать значение
+      end;
+    end;
+  end;
+end;
+
+// Процедура, вызываемая при Закрытии формы Form1
+procedure TForm1.FormClose(Sender: TObject; var Action: TCloseAction);
+// var Result: Word; // переменная, в которой хранится результат выбора пользователя
+begin
+  if Application.MessageBox('Выйти из программы ?', 'Внимание', MB_ICONQUESTION+MB_OKCANCEL+MB_DEFBUTTON2) = idOk then
+    Action := caFree   // The form is closed and all allocated memory for the form is freed.
+  else
+    Action := caNone;  // The form is not allowed to close, so nothing happens.
+end;
+
+// Процедура, вызываемая при Создании формы Form1
+// В ней мы проверяем существование Table1 (таблицы Tasks) с информацией о задачах
+// и если ее нет - то создаем таблицу через метод CreateTable компонента Table1
+// Также для колонок DBGrid-a создаются выпадающие списки выбора значений
+procedure TForm1.FormCreate(Sender: TObject);
+var
+  i: Word;                  // счетчик цикла
+  tmpTime: TDateTime;       // для формирования списка времени
+      // '00:00', '00:30', '01:00', '01:30', '02:00', ..., '23:30'
+  fd: TextFile;  // файловая переменная (дескриптор) для работы с файлом
+  text: string;  // переменная для занесения считанной из текстового файла строки
+begin
+  // Подготовка набора данных (Table1) для Form1
+  with Form1.Table1 do begin
+    Active:=false; // Требуется закрыть набор данных
+    DatabaseName:='Planner';// Псевдоним БД
+    TableName:='Tasks.db';// Имя таблицы
+    TableType:=ttParadox; //Тип таблицы
+
+    if not Table1.Exists then begin
+      // Если Table1(таблица Tasks) не существует, создаем ее используя метод CreateTable
+      with FieldDefs do begin  // Определяем поля таблицы
+        Clear;// Очищаем список полей
+        Add('№п/п',ftAutoInc,0,true);
+        Add('ДеньНедели',ftString,2,false);
+        Add('Дата',ftDate,0,true);
+        Add('Время',ftTime,0,true);
+        Add('Задача',ftString,50,true);
+        Add('Место',ftString,25,false);
+        Add('Выполненa',ftBoolean,0,false);
+//        Add('Completed',ftBoolean,0,false);
+      end;
+      with IndexDefs do begin // Определяем все индексы таблицы
+        Clear; // Очищаем список индексов
+        Add('','№п/п',[ixPrimary]); // Первичный индекс по полю автоинкремент
+                                    //(номер записи по порядку/идентификатор записи)
+        Add('indDateTime','Дата;Время',[ixCaseInsensitive]);
+          // Индекс для сортировки по Дате и Времени
+      end;
+      CreateTable; // Создаем таблицу
+    end; // if not Table1.Exists
+//    Open;// Открываем набор данных (Table1)
+  end;
+
+
+  // Сформируем вспомогательные списки для выбора вариантов значений для колонок DBGrid-а
+  // 1. Сформируем список Дат на месяц вперед
+  // В поле 'Дата' будет доступен выпадающий список со значениями дат
+  Present:= Now; // Now - функция, возвращает текущую дату и время
+//  DecodeDate(Present, Year, Month, Day);
+  for i := 0 to 30 do
+    Form1.DBGrid1.Columns[1].PickList.Add( FormatDateTime('dd/mm/yyyy', Present + i) );
+  Form1.DBGrid1.Columns[1].DropDownRows := 15;  // количество строк в выпадающим списке
+//  Form1.DBGrid1.Columns[1].Font.Color := $000000FF;   // колонка со временем красного цвета
+//  Form1.DBGrid1.Columns[1].Font.Color := clRed;
+
+  // 2. Сформируем список значений Времени от '00:00:00' до '23:50:00' с шагом 10 минут
+  // В поле 'Время' будет доступен выпадающий список с этими значениями для выбора
+  // Если пользователя значение с шагом в 10 минут не будет устраивать - он сможет задать свое
+  tmpTime := EncodeTime(0, 0, 0, 0);   // начальное значение времени '00:00:00.000'
+  for i := 0 to 143 do begin   // Список времен в течении суток с интервалом в 10 минут (24х6=144 итерации)
+    Form1.DBGrid1.Columns[2].PickList.Add( TimeToStr(tmpTime) );
+    tmpTime := IncMinute(tmpTime, 10);
+  end;
+  Form1.DBGrid1.Columns[2].DropDownRows := 15;  // количество строк в выпадающим списке
+
+  // 3. Сформируем список для выбора значений в поле 'Задача' (2-я колонка, нумерация с 0)
+  // Список часто выполняемых задач занесем в текстовый файл с именем TaskList.txt,
+  // расположенный в подкаталоге Data\ и этот список занесем в список вариантов выбора значений поля 'Задача'
+  if FileExists( ExtractFilePath(ParamStr(0))+'Data\TaskList.txt' ) then begin  // проверка существования файла
+    // Подготовка файла к работе - объявление (назначение) файловой переменной (дескриптора файла)
+    AssignFile(fd, ExtractFilePath(ParamStr(0))+'Data\TaskList.txt' );
+    Reset(fd); // открываем текстовый файл для чтения
+    while not Eof(fd) do begin // пока не достигнут конец файла
+      ReadLn(fd, text); // читаем файл построчно в переменную text
+      Form1.DBGrid1.Columns[3].PickList.Add(text); // добавляем значение в список выбора поля 'Задача'
+    end;
+    CloseFile(fd); // закрываем файл
+  end;
+  Form1.DBGrid1.Columns[3].DropDownRows := 15;  // количество строк в выпадающим списке
+
+{
+  // 4. Список для выбора значений в логическом поле 'Выполнена' (4-я колонка, нумерация с 0)
+  // варианты значений True/False
+  Form1.DBGrid1.Columns[5].PickList.Add('True');
+  Form1.DBGrid1.Columns[5].PickList.Add('False');
+  Form1.DBGrid1.Columns[5].DropDownRows := 2;  // количество строк в выпадающим списке
+ }
+
+  // При отрытии формы компоненты диапазона дат для отбора списка задач не отображаем
+  DateTimePicker1.Visible := False;
+  DateTimePicker2.Visible := False;
+end;
+
+// Пункт меню "Выход"
+procedure TForm1.N10Click(Sender: TObject);
+begin
+  if Application.MessageBox('Выйти из программы ?', 'Планировщик задач', MB_ICONQUESTION+MB_OKCANCEL+MB_DEFBUTTON2) = idOk then
+     Application.Terminate;
+end;
+
+// Действие на пункт меню Справочники \ Контакты
+procedure TForm1.N11Click(Sender: TObject);
+begin
+  Form2.Visible := True;  // отобразить Form2
+  Form2.Table2.Open;
+end;
+
+// Действие на пункт меню Справочники \ Календарь
+procedure TForm1.N12Click(Sender: TObject);
+begin
+  Form3.Visible:= True;
+end;
+
+// Действие на пункт меню Справочники \ Названия задач
+procedure TForm1.N13Click(Sender: TObject);
+begin
+  Form5.Visible := True;
+end;
+
+// Пункт PopumMenu1 значка в трее "Планировщик задач"
+procedure TForm1.N14Click(Sender: TObject);
+begin
+  Ic(2, Application.Icon); // Удаляем значок из трея
+  ShowWindow(Handle, SW_SHOWNORMAL); // Восстанавливаем окно программы (Form1)
+  ShowWindow(Application.Handle, SW_SHOW);  // восстановливаем кнопку программы в TaskBar
+end;
+
+// Пункт PopumMenu1 значка в трее "Контакты"
+procedure TForm1.N15Click(Sender: TObject);
+begin
+  Form2.Visible := True;  // отобразить Form2
+  // Устанавливаем индекс (сортировку) по ФИО
+  Form2.Table2.IndexName := 'indFamily';
+  Form2.Table2.Open;
+end;
+
+// Пункт PopumMenu1 значка в трее "Выход"
+procedure TForm1.N17Click(Sender: TObject);
+begin
+//  Ic(2, Application.Icon); // Удаляем значок из трея
+  N10Click(nil);
+end;
+
+// Действие на пункт меню "О программе"
+procedure TForm1.N3Click(Sender: TObject);
+begin
+  Form4.Visible := True;
+end;
+
+// Действие на пункт меню Планировщик задач \ На сегодня
+procedure TForm1.N4Click(Sender: TObject);
+begin
+  Button1Click(nil);
+end;
+
+// Действие на пункт меню Планировщик задач \ На завтра
+procedure TForm1.N5Click(Sender: TObject);
+begin
+  Button2Click(nil);
+end;
+
+// Действие на пункт меню Планировщик задач \ На этой неделе
+procedure TForm1.N6Click(Sender: TObject);
+begin
+  Button3Click(nil);
+end;
+
+// Действие на пункт меню Планировщик задач \ На след. неделе
+procedure TForm1.N7Click(Sender: TObject);
+begin
+  Button6Click(nil);
+end;
+
+// Действие на пункт меню Планировщик задач \ Все записи
+procedure TForm1.N8Click(Sender: TObject);
+begin
+  Button4Click(nil);
+end;
+
+// Через выбор варианта в RadioGroup пользователь задает
+// дополнительное условие фильтра по полю 'Выполнена'
+// (в дополнение к условию по полю 'Дата')
+procedure TForm1.RadioGroup1Click(Sender: TObject);
+var
+  strFilter2: String;  // Переменая для сохранения условия на поле 'Выполнена'
+begin
+  case RadioGroup1.ItemIndex of  // Анализ варианта выбора в RadioGroup
+    // 0 - отбор Всех задач
+    0:  strFilter2 := '';    // без условия на поле 'Выполнена'
+    // 1 - отбор Выполненных задач
+    1:  if length(strFilter1) > 0 then // уже задан фильтр по полю 'Дата'
+          // добавлять дополнительное условие по полю 'Выполнена' будем через оператор and
+          strFilter2 := 'and (Выполненa = True)'  // Выполненные задачи
+        else  // фильтр по полю 'Дата' не задан, поэтому
+          // условие по полю 'Выполнена' будет Без оператора "and" вначале
+          strFilter2 := '(Выполненa = True)';  // Выполненные задачи
+    // 2 - отбор Не выполненых задач
+    2:  if length(strFilter1) > 0 then    // уже задан фильтр по полю 'Дата'
+          strFilter2 := 'and (Выполненa <> True)'
+                // Значение поля 'Выполнена' Не True (или путое или False)
+        else
+          strFilter2 := '(Выполненa <> True)'
+  end;
+  // Итоговое условие фильтра - это Сумма условий в переменной strFilter1 (по полю 'Дата')
+  // и условия в переменной strFilter2 (по полю 'Выполнена')
+  Form1.Table1.Filter := strFilter1 + strFilter2;
+  Form1.Table1.Filtered := True;  // включить фильтр
+end;
+
+
+//**********************************************
+//                    ТРЕЙ                     *
+//**********************************************
+{ Для операций с иконками трея используется только одна функция Windows - Shell_NotifyIconData,
+  определение которой "звучит" следующим образом:
+  function Shell_NotifyIcon (dwMessage: DWORD; lpData: PNotifyIconData): BOOL; stdcall;
+  И в качестве параметров функция воспринимает:
+  dwMessage - идентификатор сообщения, которое посылается иконке в трее.
+    Может принимать значения NIM_ADD, NIM_DELETE,N IM_MODIFY;
+  lpData - указатель на структуру TNotifyIconData, в которой помещена информация о параметрах иконки;
+  возвращаемое значение - принимает true при успешном завершении операции или false в противном случае.
+  Эта функция только изменяет состояние иконки в зависимости от значения параметра dwMessage -
+  а это значит, что вся нужная нам информация находится в структуре TNotifyIconData.
+}
+
+// Для изменения значка в трее используется класс TShellNotifyIcon модуля ShellApi
+// Ic() - вспомогательная процедура для работы с иконками
+// Параметры к ней такие:
+// n - номер операции ( 1 - добавить, 2 - удалить, 3 - заменить)
+// и Icon - сама иконка с которой будет выполняться эта операция
+Procedure TForm1.Ic(n:Integer; Icon:TIcon);
+  var Nim: TNotifyIconData;  // структура TNotifyIconData, в которой помещается информация о параметрах иконки;
+begin
+  With Nim do
+  begin
+    cbSize:=SizeOf(Nim);  // задает размер структуры TnotifyIconData
+    Wnd:=Form1.Handle;    // идентификатор окна, которое будет реагировать на сообщения нашей иконки
+    uID:=1;               // идентификатор, по которому Wnd определяет нашу иконку;
+    uFlags:=NIF_ICON or NIF_MESSAGE or NIF_TIP;  // флаги, которые могут принимать значения NIF_ICON, NIF_MESSAGE, NIF_TIP;
+    hIcon:=Icon.Handle;    // идентификатор иконки, которая будет размещена в трее;
+    uCallbackMessage:=WM_USER+1;  // Это сообщение, которое будет приходить от значка в трее
+                                  // и которое мы будем обрабатывать в процедуре IconMouse()
+    szTip:='Планировщик задач';   // строка всплывающей подсказки при наведении на иконку указателя мыши
+  end;
+  Case n OF
+    1: Shell_NotifyIcon(Nim_Add,@Nim);
+    2: Shell_NotifyIcon(Nim_Delete,@Nim);
+    3: Shell_NotifyIcon(Nim_Modify,@Nim);
+  end;
+end;
+
+// Процедура для отлавливания минимизации приложения (категория сообщений SYSCOMMAND),
+// для того, чтобы заменить стандартное действие Windows  на "свёртывание в трей"
+procedure TForm1.ControlWindow(var Msg:TMessage);
+begin
+  if Msg.WParam=SC_MINIMIZE then begin
+    Ic(1, Application.Icon); // Добавляем значок в трей
+    ShowWindow(Handle, SW_HIDE); // Скрываем окно программы (окно Form1)
+    ShowWindow(Application.Handle, SW_HIDE); // скрываем кнопку программы на TaskBar
+  end
+  else inherited;  // обработка других команд наследуется из базового класса (т.е. не меняется)
+end;
+
+// Процедура для обработки нажатий кнопок мыши на значке в трее
+procedure TForm1.IconMouse(var Msg:TMessage);
+var p:tpoint;  // перменная для хранения текущего состояния курсора мыши
+begin
+  GetCursorPos(p); // Запоминаем координаты курсора мыши
+  case Msg.LParam of // Проверяем какая кнопка была нажата
+    WM_LBUTTONUP:  {Действия, выполняемый по одинарному щелчку кнопки мыши }
+      begin
+        // ничего не делаем
+      end;
+    WM_LBUTTONDBLCLK: {Действия, выполняемый по двойному щелчку левой кнопки мыши на значке.
+                    В нашем случае это просто активация приложения}
+      begin
+        Ic(2, Application.Icon); // Удаляем значок из трея
+        ShowWindow(Handle, SW_SHOWNORMAL); // Восстанавливаем окно программы (окно Form1)
+        ShowWindow(Application.Handle, SW_SHOW);  // восстановливаем кнопку программы в TaskBar
+      end;
+    WM_RBUTTONUP: {Действия, выполняемый по одинарному щелчку правой кнопки мыши}
+      begin
+        SetForegroundWindow(Handle); // Восстанавливаем программу в качестве переднего окна
+        PopupMenu1.Popup(p.X, p.Y); // Вызываем PopupMenu для значка в трее
+        PostMessage(Handle,WM_NULL,0,0) // Обнуляем сообщение для основного окна
+      end;
+  end;
+end;
+
+
+end.

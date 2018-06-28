@@ -1,0 +1,28 @@
+// Главный модуль программы Организатор.
+// Чтобы его увидеть, выберите в меню
+// Project команду View Source.
+
+program Planner1;
+
+uses
+  Forms,
+  Unit1 in 'Unit1.pas', {Form1}
+  DateUtils,  // для доступа к функции IncDay()
+  DBTables;   // для доступа к таблице з данними
+
+
+
+{$R *.res}
+var
+  Present: TDateTime;       // сегодня
+  NextDay: TDateTime;       // следующий день
+  Year, Month, Day : Word;  // год, месяц, день
+
+  Query: TQuery; // запрос, обеспечивающий
+                 // создание таблицы БД
+
+begin
+  Application.Initialize;
+  Application.CreateForm(TForm1, Form1);
+  Application.Run;
+end.

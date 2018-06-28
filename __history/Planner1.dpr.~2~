@@ -1,0 +1,21 @@
+// Главный модуль программы Организатор.
+// Чтобы его увидеть, выберите в меню
+// Project команду View Source.
+
+program Planner1;
+
+uses
+  Forms,
+  Unit1 in 'Unit1.pas', {Form1}
+  DateUtils,  // для доступа к IncDay
+  DBTables;   // для доступа к Session, AddStandardAlias
+
+
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.CreateForm(TForm1, Form1);
+  Application.Run;
+end.

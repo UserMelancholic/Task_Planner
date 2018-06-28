@@ -1,0 +1,73 @@
+// Главный модуль программы Организатор.
+// Чтобы его увидеть, выберите в меню
+// Project команду View Source.
+
+program Planner;
+
+uses
+  Forms,
+  Unit1 in 'Unit1.pas',
+  SysUtils,
+  Dialogs,
+  DateUtils,
+  DBTables,
+  Graphics,
+  Unit2 in 'Unit2.pas' {Form2},
+  Unit3 in 'Unit3.pas' {Form3},
+  Unit4 in 'Unit4.pas' {Form4},
+  Unit5 in 'Unit5.pas' {Form5};
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.Title := 'Планировщик задач';
+
+ // Cоздадим псевдоним (Alias) БД
+  { Псевдоним для доступа к базе данных создается во
+   время запуска программы и существует только во
+   время работы программы.
+   База данных будет находиться в подкаталоге Data каталога,
+   в котором размещается выполняемый файл программы.
+   Имя каталога,в котором находится выполняемый файл
+   можно получить обратившись к функции ParamStr(0). }
+  Session.ConfigMode := cmSession;
+  Session.AddStandardAlias('Planner',   // псевдоним БД
+                      ExtractFilePath(ParamStr(0))+'Data\', // каталог размещения файлов данных
+                     'PARADOX');    //  тип БД
+
+  Application.CreateForm(TForm3, Form3);
+  Application.CreateForm(TForm4, Form4);
+  Application.CreateForm(TForm5, Form5);
+  Application.CreateForm(TForm1, Form1);   // При создании Form1 создается таблица Tasks.db
+  Application.CreateForm(TForm2, Form2);   // При создании Form2 создается таблица Phones.db
+
+  Form1.Label1.Caption := 'Задачи на сегодня';
+
+  // Определяем начальный Фильтр - задачи на сегодня
+  // Now - функция, возвращает текущую дату и время
+  strFilter1 := '(Дата = '''+FormatDateTime('dd/mm/yyyy',Now)+''')';
+      // запоминаем текущее значение фильтра по полю 'Дата' в переменной strFilter1,
+      // объявленной в Unit1
+  Form1.Table1.Filter := strFilter1;  // Задаем фильтр в свойстве Filter
+  Form1.Table1.Filtered := True;  // включаем фильтр
+
+  // Устанавливаем индекс (сортировку) по Дате и Времени
+  Form1.Table1.IndexName := 'indDateTime';
+      // индекс с именем 'indDateTime' был создан при создании таблицы
+
+  Form1.Table1.Open;  // Открываем таблицу с заданным фильтром и сортировкой по заданному индексу
+
+  // Проверяем количество записей (свойство RecordCound), которые отвечают условию фильтра (задачи на сегодня)
+  if Form1.Table1.RecordCount > 0 then  // есть задачи, запланированные на сегодня
+    ShowMessage('На сегодня запланировано '+IntToStr(Form1.Table1.RecordCount)+' задачи')
+  else  // Фильтр вернул 0 строк
+    ShowMessage('На сегодня ни каких задач не запланировано.');
+
+
+ { Form2.Visible := True;  // отобразить Form2
+  Form2.Table2.Open;
+//  Form2.Table2.Active := True;}
+
+  Application.Run;  // запуск приложения
+end.

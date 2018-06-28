@@ -1,0 +1,168 @@
+unit Unit2;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, Grids, DBGrids, DB, DBTables, ExtCtrls, DBCtrls, StdCtrls;
+
+type
+  TForm2 = class(TForm)
+    Table2: TTable;
+    DataSource2: TDataSource;
+    DBGrid2: TDBGrid;
+    DBNavigator1: TDBNavigator;
+    Edit1: TEdit;
+    Edit2: TEdit;
+    Edit3: TEdit;
+    Edit4: TEdit;
+    Edit5: TEdit;
+    Edit6: TEdit;
+    Edit7: TEdit;
+    Label1: TLabel;
+    procedure FormCreate(Sender: TObject);
+    procedure Edit1Change(Sender: TObject);
+    procedure Table2FilterRecord(DataSet: TDataSet; var Accept: Boolean);
+    procedure Edit2Change(Sender: TObject);
+    procedure Edit3Change(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form2: TForm2;
+//  strFilterFamily: string;
+
+implementation
+
+{$R *.dfm}
+
+
+// Вызвается при изменении значения фильтра для поля 'ФИО'
+// Передернем фильтр для Table2
+// При этом для каждой записи таблицы будет вызвана процедура Table2FilterRecord
+// в которой определено условие отбора записей
+procedure TForm2.Edit1Change(Sender: TObject);
+begin
+  Form2.Table2.Filtered := False;  // выключить фильтр
+  Form2.Table2.Filtered := True;  // включить фильтр
+end;
+
+
+// Вызвается при изменении значения фильтра для поля 'Организация'
+// Передернем фильтр для таблицы
+procedure TForm2.Edit2Change(Sender: TObject);
+begin
+  Form2.Table2.Filtered := False;  // выключить фильтр
+  Form2.Table2.Filtered := True;  // включить фильтр
+end;
+
+procedure TForm2.Edit3Change(Sender: TObject);
+begin
+  Form2.Table2.Filtered := False;  // выключить фильтр
+  Form2.Table2.Filtered := True;  // включить фильтр
+end;
+
+// Процедура, вызываемая при Создании формы Form2
+// В ней мы проверяем существование Table2 (таблицы Phones) с информацией о телефонных контактах
+// и если ее нет - то создаем таблицу через метод CreateTable компонента Table2
+procedure TForm2.FormCreate(Sender: TObject);
+begin
+  // Подготовка набора данных (Table2) для Form2
+  with Form2.Table2 do begin
+    Active:=false; // Требуется закрыть набор данных
+    DatabaseName:='Planner';// Псевдоним БД
+    TableName:='Phones.db';// Имя таблицы
+    TableType:=ttParadox; //Тип таблицы
+
+    if not Table2.Exists then begin
+      // Если Table2(таблица Phones) не существует, создаем его используя метод CreateTable
+      with FieldDefs do begin  // Определяем поля таблицы
+        Clear;// Очищаем список полей
+        Add('№п/п',ftAutoInc,0,true);
+        Add('ФИО',ftString,30,true);
+        Add('Организация',ftString,30,false);
+        Add('Моб.телефон',ftString,20,false);
+        Add('Роб.телефон',ftString,20,false);
+        Add('Дом.телефон',ftString,20,false);
+        Add('E-mail',ftString,40,false);
+        Add('Адрес',ftString,50,false);
+      end;
+      with IndexDefs do begin // Определяем все индексы таблицы
+        Clear; // Очищаем список индексов
+        Add('','№п/п',[ixPrimary]); // Первичный индекс по полю автоинкремент
+                                    //(номер записи по порядку/идентификатор записи)
+        Add('indFamily','ФИО',[ixCaseInsensitive]); // Индекс по Фамилии
+        Add('indCompany','Организация',[ixCaseInsensitive]); // Индекс по Организации
+      end;
+      CreateTable; // Создаем таблицу
+    end; // if not Table2.Exists
+    Filter := '';       // пока условие фильтра не задано
+    Filtered := True;   // включить фильтр, условие отбора записей задаются дополнительно
+  end;
+end;
+
+// Процедура FilterRecord вызывается для каждого записи таблицы при включенном Фильтре.
+// Если для текущей записи проверяемое условие выполняется, то неободимо установить значение параметра Accept = True,
+// в этом случае эта запись выводится, иначе - не выводится.
+// Поэтому достаточно написать правильные Логические выражения, которые задают значение параметра Accept.
+// Фильтр записей у нас может задаваться для нескольких полей одновременно, поэтому
+// итоговое значение Accept для отбора текущей записи определяется по связке AND для всех заданных условий.
+procedure TForm2.Table2FilterRecord(DataSet: TDataSet; var Accept: Boolean);
+begin
+  Accept := True;  // изначально считаем, что запись отбирается
+  if Length(Edit1.Text) > 0 then begin  // задан фильтр для поля 'ФИО'
+//    Accept := Pos(LowerCase(strFilterFamily), LowerCase(DataSet.FieldValues['ФИО'])) > 0
+//    ShowMessage('Param1 = '+AnsiLowerCase(strFilterFamily));
+//    ShowMessage('Param2 = '+AnsiLowerCase(DataSet.FieldValues['ФИО']));
+    if DataSet.FieldValues['ФИО'] = null then  // значение поля не заполнено
+      Accept := False   // а фильтр задан по этому полю, поэтому эту запись не отбираем
+    else  // дополнительно проверяем содержит ли значение фильтра в значении поля текущей запис
+      Accept := Accept and (AnsiPos(AnsiLowerCase(Edit1.Text), AnsiLowerCase(DataSet.FieldValues['ФИО'])) > 0)
+      // Функция AnsiPos(строка1, строка2) возвращает позицию вхождения строки1 в строке2,
+      // если строка2 не содержит строку1, то возращается 0.
+      // Функция чувствительно к регистру, поэтому переводим аргументы к одному регистру, например нижнему
+  end;
+  if Length(Edit2.Text) > 0 then begin  // задан фильтр для поля 'Организация'
+    if DataSet.FieldValues['Организация'] = null then  // значение поля не заполнено
+      Accept := False   // а фильтр задан по этому полю, поэтому эту запись не отбираем
+    else  // дополнительно проверяем содержит ли значение фильтра в значении поля текущей запис
+      Accept := Accept and (AnsiPos(AnsiLowerCase(Edit2.Text), AnsiLowerCase(DataSet.FieldValues['Организация'])) > 0)
+  end;
+  if Length(Edit3.Text) > 0 then begin  // задан фильтр для поля 'Моб.телефон'
+    if DataSet.FieldValues['Моб.телефон'] = null then  // значение поля не заполнено
+      Accept := False   // а фильтр задан по этому полю, поэтому эту запись не отбираем
+    else  // дополнительно проверяем содержит ли значение фильтра в значении поля текущей запис
+      Accept := Accept and ( Pos(Edit3.Text, DataSet.FieldValues['Моб.телефон']) > 0 )
+  end;
+  if Length(Edit4.Text) > 0 then begin  // задан фильтр для поля 'Роб.телефон'
+    if DataSet.FieldValues['Роб.телефон'] = null then  // значение поля не заполнено
+      Accept := False   // а фильтр задан по этому полю, поэтому эту запись не отбираем
+    else  // дополнительно проверяем содержит ли значение фильтра в значении поля текущей запис
+      Accept := Accept and ( Pos(Edit4.Text, DataSet.FieldValues['Роб.телефон']) > 0 )
+  end;
+  if Length(Edit5.Text) > 0 then begin  // задан фильтр для поля 'Дом.телефон'
+    if DataSet.FieldValues['Дом.телефон'] = null then  // значение поля не заполнено
+      Accept := False   // а фильтр задан по этому полю, поэтому эту запись не отбираем
+    else  // дополнительно проверяем содержит ли значение фильтра в значении поля текущей запис
+      Accept := Accept and ( Pos(Edit5.Text, DataSet.FieldValues['Дом.телефон']) > 0 )
+  end;
+  if Length(Edit2.Text) > 0 then begin  // задан фильтр для поля 'E-mail'
+    if DataSet.FieldValues['E-mail'] = null then  // значение поля не заполнено
+      Accept := False   // а фильтр задан по этому полю, поэтому эту запись не отбираем
+    else  // дополнительно проверяем содержит ли значение фильтра в значении поля текущей запис
+      Accept := Accept and (AnsiPos(AnsiLowerCase(Edit2.Text), AnsiLowerCase(DataSet.FieldValues['E-mail'])) > 0)
+  end;
+  if Length(Edit2.Text) > 0 then begin  // задан фильтр для поля 'Адрес'
+    if DataSet.FieldValues['Адрес'] = null then  // значение поля не заполнено
+      Accept := False   // а фильтр задан по этому полю, поэтому эту запись не отбираем
+    else  // дополнительно проверяем содержит ли значение фильтра в значении поля текущей запис
+      Accept := Accept and (AnsiPos(AnsiLowerCase(Edit2.Text), AnsiLowerCase(DataSet.FieldValues['Адрес'])) > 0)
+  end;
+
+end;
+
+
+end.
